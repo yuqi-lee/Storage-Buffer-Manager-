@@ -2,7 +2,6 @@ package data_storage_manager
 
 import (
 	"errors"
-	"io/ioutil"
 	"log"
 	"os"
 )
@@ -29,14 +28,30 @@ type DSMgr struct {
 }
 
 func (dsm *DSMgr) InitFile(filename string) error {
+
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return errors.New("")
+	}
+	defer f.Close()
+
 	//tips: distinguish binary 0 from character '0'
 	var zeros = [MaxPages + 4]byte{'0'}
+	for i := 0; i < int(MaxPages)+4; i++ {
+		zeros[i] = '0'
+	}
+	//log.Printf("zeros: %v", zeros[0:10])
+	//zeros[0] = 0
+	//zeros[1] = 0
+	//zeros[2] = 7
+	//zeros[3] = 1
+
 	for i := 0; i < 4; i++ {
 		zeros[i] = 0
 	}
 
 	// overwrite the raw file
-	err := ioutil.WriteFile(filename, zeros[:], 0644)
+	_, err = f.Write(zeros[:])
 	return err
 }
 
@@ -52,6 +67,7 @@ func (dsm *DSMgr) OpenFile(filename string) error {
 	if err != nil {
 		return err
 	}
+	log.Printf("numPagesBytes: %v", numPagesBytes)
 	dsm.numPages = bytes2Int32(numPagesBytes[:]) //fread(&numPages, 4, 1, currFile)
 
 	dsm.pagesStart = ((MaxPages*1+1*4-1)/FrameSize + 1) * FrameSize

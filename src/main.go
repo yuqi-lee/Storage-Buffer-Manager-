@@ -1,45 +1,68 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 
 	bm "adbslab.com/buffer_manager"
 	dsm "adbslab.com/data_storage_manager"
 )
 
 const (
-	BenchPath string = ""
+	BenchPath string = "./data-5w-50w-zipf.txt"
 )
 
 var (
-	bufferManager      *bm.BMgr
-	dataStorageManager *dsm.DSMgr
+	bufferManager *bm.BMgr = &bm.BMgr{}
 )
 
 func main() {
+	bufferManager.Init()
+
 	err := CreateDBFFile()
 	if err != nil {
 		panic(err)
 	}
 
-	bufferManager = &bm.BMgr{}
-	dataStorageManager = &dsm.DSMgr{}
+	//bufferManager.Lru = bm.New(int64(bm.BufferSize*4), nil)
+	//log.Printf("Current size of buffer: 		%v", bufferManager.Lru.Size())
+	//log.Printf("Max size of buffer:		 	%v", bufferManager.Lru.Cap())
 
-	bufferManager.Ds.OpenFile(DBFFilePath)
-
-	benchFile, err := os.Open(BenchPath)
+	f, err := os.OpenFile(BenchPath, os.O_RDWR, 0666)
 	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
+	buf := bufio.NewReader(f)
 
 	var operation, page, frameID, counter int32
 	for {
-		n, err := fmt.Fscan(benchFile, "%d,%d", &operation, &page)
-		if n == 0 || err != nil {
+		rawStr, err := buf.ReadString('\n')
+		if err != nil {
+			log.Printf(err.Error())
 			break
 		}
+		// log.Printf("raw strings: %v", rawStr)
+
+		strs := strings.Split(rawStr, ",")
+		// log.Printf("strings: %s : %s", strs[0], strs[1])
+		if len(strs) != 2 {
+			log.Printf("Unexcepted error in bench file.")
+			continue
+		} else {
+			operationInt, _ := strconv.Atoi(strs[0])
+			pageInt, err := strconv.Atoi(strs[1][0 : len(strs[1])-2])
+			if err != nil {
+				log.Printf(err.Error())
+			}
+			operation = int32(operationInt)
+			page = int32(pageInt)
+		}
+		log.Printf("operation: %v, page: %v", operation, page)
 
 		counter++
 		page -= 1

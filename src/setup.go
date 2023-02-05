@@ -2,8 +2,6 @@ package main
 
 import (
 	"log"
-
-	bm "adbslab.com/buffer_manager"
 )
 
 const (
@@ -11,13 +9,17 @@ const (
 )
 
 func CreateDBFFile() error {
-	bufferManager = &bm.BMgr{}
-	bufferManager.Ds.InitFile(DBFFilePath)
+	err := bufferManager.Ds.InitFile(DBFFilePath)
+	if err != nil {
+		log.Printf("DBF initialization failed: " + err.Error())
+	} else {
+		log.Printf("DBF initialization succeeded.")
+	}
 	bufferManager.Ds.OpenFile(DBFFilePath)
 	for i := 0; i < 50000; i++ {
 		newpage, err := bufferManager.FixNewPage()
 		if err != nil {
-			log.Printf("Create dbf-file failed: Fix new page failed.")
+			log.Printf("Create dbf-file failed: Fix new page failed with i = %v.", i)
 			return err
 		}
 		bufferManager.UnfixPage(newpage.Page_id)
