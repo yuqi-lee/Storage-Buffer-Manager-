@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	BufferSize int32 = 1
+	BufferSize int32 = 1024
 )
 
 var (
@@ -22,6 +22,7 @@ type BCB struct {
 	frame_id int32
 	count    int32
 	dirty    int32
+	latch    byte
 	next     *BCB
 }
 
@@ -44,7 +45,7 @@ func (bm *BMgr) Init() {
 		bm.ptof[i] = nil
 		bm.buf[i] = &dsm.BFrame{}
 	}
-	log.Printf("lru size: %v", bm.lru.Size())
+	//log.Printf("lru size: %v", bm.lru.Size())
 }
 
 func (bm *BMgr) NewBCB(page_id int32) (int32, error) {
@@ -52,45 +53,39 @@ func (bm *BMgr) NewBCB(page_id int32) (int32, error) {
 	var err error
 	var bcb *BCB = &BCB{page_id: -1, frame_id: -1}
 
-	if bm.lru.Size() < int(BufferSize) {
-		// lru
-	} else {
-		log.Printf("lru size: %v, buffer size: %v", bm.lru.Size(), BufferSize)
+	if bm.lru.Size() >= int(BufferSize) {
 		res, err = bm.SelectVictim()
 		if err != nil {
 			return -1, err
 		}
 		bm.RemoveLRUEle(res)
+	} else { // Debug: Prepare for finding free frames below to prevent underflow!
+		res = 0
 	}
+
 	// Find the free space of ftop and use it,
 	// but the relationship of ‘BCB -> frame’ needs to be established later
 	bcb.page_id = page_id
 	suc := false
-	//log.Printf("ftop: %v", bm.ftop)
-	for i := 0; i < int(BufferSize); i++ {
+	for j := 0; j < int(BufferSize); j++ {
+		i := (int32(j) + res) % BufferSize // The frame just deleted (if any) should be empty
 		if bm.ftop[i] == -1 {
 			bm.ftop[i] = page_id
-			bcb.frame_id = int32(i)
-			res = int32(i)
+			bcb.frame_id = i
+			res = i
 			suc = true
 			break
 		}
 	}
 	if suc == false {
-		return -1, errors.New(" lru and ftop conflict.")
+		return -1, errors.New("lru and ftop conflict.")
 	}
+
 	// The new bcb needs to connect to the open chain of the ptof hash table
 	// to find the BCB before obtaining the frame to realize the ptof.
 	head := bm.ptof[Hash(bcb.page_id)]
-	if head == nil {
-		bm.ptof[Hash(bcb.page_id)] = bcb
-	} else //The 'next' of the last node already points to itself
-	{
-		for head.next != nil {
-			head = head.next
-		}
-		head.next = bcb
-	}
+	bcb.next = head
+	bm.ptof[Hash(bcb.page_id)] = bcb
 	bcb.count = bcb.count + 1
 
 	bm.lru.PushFront(res)
@@ -148,8 +143,8 @@ func (bm *BMgr) FixNewPage() (*NewPage, error) {
 	var err error
 
 	var index int32
-	for index < bm.Ds.GetNumPages() { //Find first free page
-		if bm.Ds.GetUse(index) == 0 {
+	for index < bm.Ds.GetNumPages() {
+		if bm.Ds.GetUse(index) == 0 { //Find first free page
 			break
 		}
 		index++

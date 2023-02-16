@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	bm "adbslab.com/buffer_manager"
 	dsm "adbslab.com/data_storage_manager"
@@ -23,7 +24,7 @@ var (
 func main() {
 	bufferManager.Init()
 
-	err := CreateDBFFile()
+	err := ExSetUp()
 	if err != nil {
 		panic(err)
 	}
@@ -40,6 +41,7 @@ func main() {
 	buf := bufio.NewReader(f)
 
 	var operation, page, frameID, counter int32
+	t1 := time.Now()
 	for {
 		rawStr, err := buf.ReadString('\n')
 		if err != nil {
@@ -62,27 +64,42 @@ func main() {
 			operation = int32(operationInt)
 			page = int32(pageInt)
 		}
-		log.Printf("operation: %v, page: %v", operation, page)
+		// log.Printf("operation: %v, page: %v", operation, page)
 
 		counter++
+		/*
+			debug
+				if counter > 10 { // debug
+					break
+				}
+		*/
 		page -= 1
 		frameID, err = bufferManager.FixPage(page, 0)
 		if err != nil {
 			log.Printf(err.Error())
-		} else if operation == 1 {
-			//if write, set frame to dirty
+		} else if operation == 1 { // operation WRITE
 			bufferManager.SetDirty(frameID)
 		}
 
 		bufferManager.UnfixPage(page)
 	}
 
+	t2 := time.Since(t1)
+
 	bufferManager.WriteDirtys()
 	bufferManager.Ds.CloseFile()
 
-	fmt.Printf("total tests: 	%d\n", counter)
-	fmt.Printf("hit: 			%d\n", bm.Hit)
-	fmt.Printf("miss: 			%d\n", bm.Miss)
-	fmt.Printf("read: 			%d\n", dsm.Read)
-	fmt.Printf("write: 			%d\n", dsm.Write)
+	fmt.Printf("\ntotal tests: 	%d\n", counter)
+
+	fmt.Printf("\ntime cost: 	%d (ms)\n\n", t2.Milliseconds())
+
+	fmt.Printf("BUFFER STATISTICS:\n")
+	fmt.Printf("hit   = %d\n", bm.Hit)
+	fmt.Printf("miss  = %d\n", bm.Miss)
+	fmt.Printf("rate  = %v\n\n", float64(bm.Hit)/float64(counter))
+
+	fmt.Printf("I/O STATISTICS:\n")
+	fmt.Printf("total = %d\n", dsm.IOCounter)
+	fmt.Printf("read  = %d\n", dsm.Read)
+	fmt.Printf("write = %d\n\n", dsm.Write)
 }

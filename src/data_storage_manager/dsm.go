@@ -12,8 +12,9 @@ const (
 )
 
 var (
-	Read  int32
-	Write int32
+	Read      int32
+	Write     int32
+	IOCounter int32
 )
 
 type BFrame struct {
@@ -35,10 +36,10 @@ func (dsm *DSMgr) InitFile(filename string) error {
 	}
 	defer f.Close()
 
-	//tips: distinguish binary 0 from character '0'
-	var zeros = [MaxPages + 4]byte{'0'}
+	//tips: distinguish binary 0 from character '#'
+	var zeros = [MaxPages + 4]byte{0}
 	for i := 0; i < int(MaxPages)+4; i++ {
-		zeros[i] = '0'
+		zeros[i] = 0
 	}
 	//log.Printf("zeros: %v", zeros[0:10])
 	//zeros[0] = 0
@@ -76,9 +77,9 @@ func (dsm *DSMgr) OpenFile(filename string) error {
 	var i int32
 	dsm.currFile.Read(pageBytes[0:dsm.numPages])
 	for i < dsm.numPages {
-		if pageBytes[i] == '0' {
+		if pageBytes[i] == 0 {
 			dsm.pages[i] = 0
-		} else if pageBytes[i] == '1' {
+		} else if pageBytes[i] == 1 {
 			dsm.pages[i] = 1
 		} else {
 			return errors.New("Unexpected error in dbf file.")
@@ -104,9 +105,9 @@ func (dsm *DSMgr) CloseFile() error {
 	var i int32 = 0
 	for ; i < dsm.numPages; i++ {
 		if dsm.pages[i] == 0 {
-			pagesbyte[i] = '0'
+			pagesbyte[i] = 0
 		} else {
-			pagesbyte[i] = '1'
+			pagesbyte[i] = 1
 		}
 	}
 
@@ -135,6 +136,7 @@ func (dsm *DSMgr) ReadPage(pageID int32) (*BFrame, error) {
 	}
 	dsm.currFile.Read(bf.Field[:]) //fread(bf.field, FrameSize, 1, dsm.currFile)
 	Read += 1
+	IOCounter += 1
 
 	return bf, nil
 }
@@ -155,6 +157,8 @@ func (dsm *DSMgr) WritePage(pageID int32, f *BFrame) error {
 	}
 	dsm.currFile.Write(f.Field[:])
 	Write += 1
+	IOCounter += 1
+
 	return nil
 }
 
@@ -182,21 +186,21 @@ func (dsm *DSMgr) SetUse(index, use_bit int32) error {
 
 		_, err := dsm.DSeek(dsm.pagesStart, index*4)
 		if err != nil {
-			return nil
+			return err
 		}
 		_, err = dsm.currFile.Write(int32ToBytes(p)) // fwrite(&p, 4, 1, dsm.currFile) //写入指针
 		if err != nil {
-			return nil
+			return err
 		}
 
 		var b BFrame = BFrame{}
 		_, err = dsm.DSeek(dsm.pagesStart, p)
 		if err != nil {
-			return nil
+			return err
 		}
 		_, err = dsm.currFile.Write(b.Field[:]) //fwrite(b.field, FRAMESIZE, 1, currFile)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 	dsm.pages[index] = use_bit
