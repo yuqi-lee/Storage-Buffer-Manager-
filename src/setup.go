@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
+
+	bm "adbslab.com/buffer_manager"
+	dsm "adbslab.com/data_storage_manager"
 )
 
 const (
@@ -34,7 +38,32 @@ func ExSetUp() error {
 		bufferManager.UnfixPage(newpage.Page_id)
 	}
 
+	//printStatisticalData()
+	resetStatisticalData()
+
 	bufferManager.Ds.CloseFile()
 	log.Printf("Create DBF file successful.")
 	return nil
+}
+
+func resetStatisticalData() {
+	bm.Hit = 0
+	bm.Miss = 0
+	dsm.Read = 0
+	dsm.Write = 0
+	dsm.IOCounter = 0
+}
+
+func printStatisticalData() {
+	fmt.Println()
+
+	fmt.Printf("BUFFER STATISTICS:\n")
+	fmt.Printf("hit   = %d\n", bm.Hit)
+	fmt.Printf("miss  = %d\n", bm.Miss)
+	fmt.Printf("rate  = %v\n\n", float64(bm.Hit)/float64(bm.Hit+bm.Miss))
+
+	fmt.Printf("I/O STATISTICS:\n")
+	fmt.Printf("total = %d\n", dsm.IOCounter)
+	fmt.Printf("read  = %d\n", dsm.Read)
+	fmt.Printf("write = %d\n\n", dsm.Write)
 }
