@@ -67,12 +67,6 @@ func main() {
 		// log.Printf("operation: %v, page: %v", operation, page)
 
 		counter++
-		/*
-			debug
-				if counter > 10 { // debug
-					break
-				}
-		*/
 		page -= 1
 		frameID, err = bufferManager.FixPage(page, 0)
 		if err != nil {

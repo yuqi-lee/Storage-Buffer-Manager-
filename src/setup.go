@@ -16,7 +16,7 @@ func ExSetUp() error {
 	// Create raw DBF file
 	err := bufferManager.Ds.InitFile(DBFFilePath)
 	if err != nil {
-		log.Printf("Raw DBF file initialization failed: " + err.Error())
+		return fmt.Errorf("Raw DBF file initialization failed: + %v", err.Error())
 	} else {
 		log.Printf("Raw DBF file initialization succeeded.")
 	}
@@ -24,7 +24,7 @@ func ExSetUp() error {
 	// Open raw DBF file
 	err = bufferManager.Ds.OpenFile(DBFFilePath)
 	if err != nil {
-		log.Printf("Open raw DBF file failed: " + err.Error())
+		return fmt.Errorf("Open raw DBF file failed:: + %v", err.Error())
 	} else {
 		log.Printf("Open raw DBF file succeeded.")
 	}
@@ -32,10 +32,15 @@ func ExSetUp() error {
 	for i := 0; i < 50000; i++ {
 		newpage, err := bufferManager.FixNewPage()
 		if err != nil {
-			log.Printf("Create DBF file failed: Fix new page failed with i = %v.", i)
+			log.Printf("Create DBF file failed: Fix new page failed with page_id = %v.", newpage.Page_id)
 			return err
 		}
-		bufferManager.UnfixPage(newpage.Page_id)
+
+		_, err = bufferManager.UnfixPage(newpage.Page_id)
+		if err != nil {
+			log.Printf("Create DBF file failed: Unfix page failed with page_id = %v.", newpage.Page_id)
+			return err
+		}
 	}
 
 	//printStatisticalData()

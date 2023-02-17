@@ -32,7 +32,7 @@ func (dsm *DSMgr) InitFile(filename string) error {
 
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_RDWR, 0644)
 	if err != nil {
-		return errors.New("")
+		return errors.New("Failed to initialize dbf file.")
 	}
 	defer f.Close()
 
