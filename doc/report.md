@@ -5,11 +5,23 @@
 
 ## 前言
 
-本实验的 `github` 仓库链接为 ，
+这是本实验的 `github` 仓库，[仓库链接](https://github.com/yuqi-lee/Storage-Buffer-Manager-) 
+
+程序运行方法：
+
+```sh
+cd src					# 进入 src/目录
+go mod tidy				# 拉取所需要的 go module
+go build .				# 编译
+.\adbslab.com.exe 		# 执行
+```
+
+`go mod tidy`会拉取`github`上的第三方`module`，如果失败请切换网络线路或者配置国内的`GOPROXY`。如有疑问请联系我。
+
 
 ## 系统设计
 
-基本按照实验文档`adbs-lab.pdf`中进行设计
+基本按照实验文档`adbs-lab.pdf`中进行设计，分三部分进行介绍
 
 ### Experiment Setup
 
@@ -233,6 +245,7 @@ func (bm *BMgr) FixPage(page_id, prot int32) (int32, error) {
 #### NewBCB()
 
 这个函数的主要作用是为即将新换入内存的`page`创建一块`BCB`，同时还负责触发置换逻辑`SelectVictim`，以及将新`BCB`插入`ptof`对应位置的链表上。代码如下：
+
 ```go
 func (bm *BMgr) NewBCB(page_id int32) (int32, error) {
 	var res int32 = -1
@@ -286,6 +299,7 @@ func (bm *BMgr) NewBCB(page_id int32) (int32, error) {
 
 #### SelectVictim()
 该函数实现了`buffer`的置换算法，选择根据`lru`或者其它算法选出一个受害者`frame`，将其换出，若该`frame`被修改过则触发一次写数据库文件。结果将对应的`frame`编号返回，代码如下：
+
 ```go
 func (bm *BMgr) SelectVictim() (int32, error) {
 	var res int32
@@ -335,9 +349,22 @@ func (bm *BMgr) SelectVictim() (int32, error) {
 
 ## 运行结果
 
-**为了方便起见，我在测试trace最后一行多加了一个换行符，否则运行本程序跑trace会少读一行数据！**
+**注：为了方便起见，我在测试trace最后一行多加了一个换行符，否则运行本程序跑trace会少读一行数据！**
 
+测试环境：
+* i7-11800H
+* 三星980 evo
+* Win11专业版
+* go version 1.19.4
 
+测试结果：
+![](pic/res.png)
+
+* 运行时间：$2809$ms
+* Buffer命中率：$34.22\%$
+* 磁盘I/O：$490448$次
+  * 读磁盘：$328906$次
+  * 写磁盘：$161542$次
 
 ## 总结
 
